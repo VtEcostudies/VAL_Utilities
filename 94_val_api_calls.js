@@ -24,12 +24,11 @@ function findValDataResource(idx, dKey) {
 
   return new Promise((resolve, reject) => {
     Request.get(parms, (err, res, body) => {
-      log(`Find VAL Data Resource | ${idx} | dataset | ${dKey} | ${parms.url} | ${res.statusCode}`);
       if (err || res.statusCode > 299) {
-        log(`ERROR | in findValDataResource | err:${err?err:undefined} | result:${res?res.statusCode:undefined}`);
+        log(`ERROR | findValDataResource | err:${err?err:undefined} | result:${res?res.statusCode:undefined}`);
         reject({}); //expecting an object
       } else if (1 != body.length) {
-        log(`ERROR | in findValDataResource | FOUND ${body.length} Data Resources`);
+        log(`ERROR | findValDataResource | FOUND ${body.length} Data Resources`);
         reject({}); //expecting an object
       } else {
         log(`FOUND | findValDataResource | ${idx} | dataset | ${dKey} | ${parms.url} | result: ${JSON.stringify(body[0])}`);
@@ -51,7 +50,7 @@ function getValDataResource(idx, drUid) {
   return new Promise((resolve, reject) => {
     Request.get(parms, (err, res, body) => {
       if (err || res.statusCode > 299) {
-        log(`ERROR | getValDataResource | ${idx} | drUid | ${drUid} | error:${err?err:undefined} | result:${res?res.statusCode:undefined}`);
+        log(`ERROR | getValDataResource | ${idx} | drUid | ${drUid} | error:${err?err.message:undefined} | result:${res?res.statusCode:undefined}`);
         reject({}); //expecting an object
       } else {
         log(`FOUND | getValDataResource | ${idx} | drUid | ${drUid} | ${parms.url} | ${res.statusCode}`);
@@ -81,7 +80,7 @@ function findValDataProvider(idx, orgKey) {
   return new Promise((resolve, reject) => {
     Request.get(parms, (err, res, body) => {
       if (err || res.statusCode > 299) {
-        log(`ERROR | findValDataProvider | ${idx} | GBIF Org Key | ${orgKey} | status: ${res.statusCode} | Error: ${err.message}`);
+        log(`ERROR | findValDataProvider | ${idx} | GBIF Org Key | ${orgKey} | status: ${res.statusCode} | Error: ${err?err.message:undefined}`);
         reject({});
       } else if (1 != body.length) {
         log(`ERROR | findValDataProvider | ${idx} | GBIF Org Key | ${orgKey} | FOUND ${body.length} items.`);
@@ -106,7 +105,7 @@ function getValDataProvider(idx, dpUid) {
   return new Promise((resolve, reject) => {
     Request.get(parms, (err, res, body) => {
       if (err || res.statusCode > 299) {
-        log(`ERROR | getValDataProvider | ${idx} | dpUid | ${dpUid} | error:${err?err:undefined} | result:${res?res.statusCode:undefined}`);
+        log(`ERROR | getValDataProvider | ${idx} | dpUid | ${dpUid} | error:${err?err.message:undefined} | result:${res?res.statusCode:undefined}`);
         reject({}); //expecting an object
       } else {
         log(`FOUND | getValDataProvider | ${idx} | dpUid | ${dpUid} | ${parms.url} | ${res.statusCode}`);
@@ -116,6 +115,8 @@ function getValDataProvider(idx, dpUid) {
   });
 }
 
+/*
+*/
 function postValDataResource(idx, dKey, gbifDS, dpUid=null, inUid=null, coUid=null) {
   var pBody = gbifToValDataset(gbifDS, dpUid, inUid, coUid); //POST Body - create data format for LA Collectory from GBIF
 
@@ -127,13 +128,12 @@ function postValDataResource(idx, dKey, gbifDS, dpUid=null, inUid=null, coUid=nu
 
   return new Promise((resolve, reject) => {
     Request.post(parms, (err, res, body) => {
-      log(`POST VAL Data Resource | ${idx} | dataset | ${dKey} |  ${parms.url} | ${res.statusCode}`);
       if (err || res.statusCode > 299) {
-        log(`POST VAL Data Resource ERROR | ${idx} | dataset | ${dKey} | ${parms.url} | dpUID: ${dpUid} | ${res.statusCode} | ${err.message}`);
+        log(`ERROR | postValDataResource | ${idx} | dataset | ${dKey} | ${parms.url} | dpUID: ${dpUid} | ${res.statusCode} | ${err.message}`);
         reject({});
       } else {
-        log(`POST VAL Data Resource SUCCESS | ${idx} | dataset | ${dKey} |  ${parms.url} | dpUID: ${dpUid} | ${res.statusCode}`);
-        log(body);
+        log(`ERROR | postValDataResource | ${idx} | dataset | ${dKey} |  ${parms.url} | dpUID: ${dpUid} | ${res.statusCode}`);
+        log(body); //What is return from successful POST?
         resolve(body);
       }
     });
@@ -152,11 +152,11 @@ function putValDataResource(idx, dKey, gbifDS, valDR, dpUid=null, inUid=null, co
   return new Promise((resolve, reject) => {
     Request.put(parms, (err, res, body) => {
       if (err || res.statusCode > 299) {
-        log(`PUT VAL Data Resource ERROR | ${idx} | dataset | ${dKey} |  ${parms.url} | dpUID: ${dpUid} | ${res.statusCode} | ${err.message}`);
+        log(`ERROR | putValDataResource | ${idx} | dataset | ${dKey} |  ${parms.url} | dpUID: ${dpUid} | ${res.statusCode} | ${err.message}`);
         reject({});
       } else {
-        log(`PUT VAL Data Resource SUCCESS | ${idx} | dataset | ${dKey} |  ${parms.url} | dpUID: ${dpUid} | ${res.statusCode}`);
-        //log(body);
+        log(`SUCCESS | putValDataResource | ${idx} | dataset | ${dKey} |  ${parms.url} | dpUID: ${dpUid} | ${res.statusCode}`);
+        //log(body); //return from successful PUT just a text message.
         resolve(body);
       }
     });
@@ -175,15 +175,16 @@ function postValDataProvider(idx, gbifOrg, gbifIpt=[]) {
 
   return new Promise((resolve, reject) => {
     Request.post(parms, (err, res, body) => {
-      log(`postValDataProvider | ${idx} | GBIF Org Key | ${gbifOrg.key} | ${res.statusCode}`);
       if (err) {
-        log(`postValDataProvider | ${idx} | GBIF Org | ${gbifOrg.title} Error:`, err);
+        log(`ERROR | postValDataProvider | ${idx} | GBIF Org | ${gbifOrg.title} | error: ${err.message} | Req Params:`);
+        log(parms);
         reject(err);
       } else if (res.statusCode > 299) {
-        log(`postValDataProvider | ${idx} | GBIF Org | ${gbifOrg.title}| Bad Result: ${res.statusCode} | Req Params:`);
-        console.dir(parms);
+        log(`ERROR | postValDataProvider | ${idx} | GBIF Org | ${gbifOrg.title}| Bad Result: ${res.statusCode} | Req Params:`);
+        log(parms);
         reject(res);
       } else {
+        log(`SUCCESS | postValDataProvider | ${idx} | GBIF Org | ${gbifOrg.title}| Status: ${res.statusCode}`);
         log(body);
         resolve(body);
       }
@@ -204,15 +205,15 @@ function putValDataProvider(idx, gbifOrg, gbifIpt=[], valDP) {
   return new Promise((resolve, reject) => {
     Request.put(parms, (err, res, body) => {
       if (err) {
-        log(`ERROR | putValDataProvider | ${idx} | GBIF Org | ${gbifOrg.title} | VAL dataProvider: ${valDP.uid} | Error: ${err.messgae} |  | Req Params:`);
-        console.dir(parms);
+        log(`ERROR | putValDataProvider | ${idx} | GBIF Org | ${gbifOrg.title} | VAL dataProvider: ${valDP.uid} | Error: ${err.message} | Req Params:`);
+        log(parms);
         reject({});
       } else if (res.statusCode > 299) {
         log(`ERROR | putValDataProvider | ${idx} | VAL dataProvider: ${valDP.uid} | Bad Result: ${res.statusCode} | Req Params:`);
-        console.dir(parms);
+        log(parms);
         reject({});
       } else {
-        log(`SUCCESS | putValDataProvider | ${idx} | GBIF Org Key | ${gbifOrg.key} | VAL dataProvider: ${valDP.uid} | ${res.statusCode}`);
+        log(`SUCCESS | putValDataProvider | ${idx} | GBIF Org Key | ${gbifOrg.key} | VAL dataProvider: ${valDP.uid} | Status: ${res.statusCode}`);
         //log(body);
         resolve(body);
       }
@@ -221,29 +222,34 @@ function putValDataProvider(idx, gbifOrg, gbifIpt=[], valDP) {
 }
 
 /*
-ALA collectory insertable fields are found here:
-https://github.com/AtlasOfLivingAustralia/collectory-plugin/blob/2ed9737c04db9a07fe9052d40ece43c4e5a2b207/grails-app/services/au/org/ala/collectory/CrudService.groovy#L19
-baseStringProperties =
-    ['guid','name','acronym','phone','email','state','pubShortDescription',
-    'pubDescription','techDescription','notes', 'isALAPartner','focus','attributions',
-    'websiteUrl','networkMembership','altitude', 'street','postBox','postcode','city',
-    'state','country','file','caption','attribution','copyright', 'gbifRegistryKey']
-    https://github.com/AtlasOfLivingAustralia/collectory-plugin/blob/2ed9737c04db9a07fe9052d40ece43c4e5a2b207/grails-app/services/au/org/ala/collectory/CrudService.groovy#L33
-dataResourceStringProperties =
-    ['rights','citation','dataGeneralizations','informationWithheld',
-    'permissionsDocument','licenseType','licenseVersion','status','mobilisationNotes','provenance',
-    'harvestingNotes','connectionParameters','resourceType','permissionsDocumentType','riskAssessment',
-    'filed','publicArchiveAvailable','contentTypes','defaultDarwinCoreValues', 'imageMetadata',
-    'geographicDescription','northBoundingCoordinate','southBoundingCoordinate','eastBoundingCoordinate',
-    'westBoundingCoordinate','beginDate','endDate','qualityControlDescription','methodStepDescription',
-    'gbifDoi']
-NOTE: To debug this, on val core server:
-  - tail -f /var/log/tomcat7ala-collecotry.log
+  Map GBIF dataSet properties to ALA dataResource properties
+
+  ALA Collectory insertable fields are found here:
+  https://github.com/AtlasOfLivingAustralia/collectory-plugin/blob/2ed9737c04db9a07fe9052d40ece43c4e5a2b207/grails-app/services/au/org/ala/collectory/CrudService.groovy#L19
+
+  baseStringProperties =
+      ['guid','name','acronym','phone','email','state','pubShortDescription',
+      'pubDescription','techDescription','notes', 'isALAPartner','focus','attributions',
+      'websiteUrl','networkMembership','altitude', 'street','postBox','postcode','city',
+      'state','country','file','caption','attribution','copyright', 'gbifRegistryKey']
+      https://github.com/AtlasOfLivingAustralia/collectory-plugin/blob/2ed9737c04db9a07fe9052d40ece43c4e5a2b207/grails-app/services/au/org/ala/collectory/CrudService.groovy#L33
+
+  dataResourceStringProperties =
+      ['rights','citation','dataGeneralizations','informationWithheld',
+      'permissionsDocument','licenseType','licenseVersion','status','mobilisationNotes','provenance',
+      'harvestingNotes','connectionParameters','resourceType','permissionsDocumentType','riskAssessment',
+      'filed','publicArchiveAvailable','contentTypes','defaultDarwinCoreValues', 'imageMetadata',
+      'geographicDescription','northBoundingCoordinate','southBoundingCoordinate','eastBoundingCoordinate',
+      'westBoundingCoordinate','beginDate','endDate','qualityControlDescription','methodStepDescription',
+      'gbifDoi']
+
+  NOTE: To debug this, on val core server:
+    - tail -f /var/log/tomcat7ala-collecotry.log
 */
 function gbifToValDataset(gbifDS, valDR={}, valDP=null, valIN=null, valCO=null) {
   var resourceType = 'records';
 
-  //some values need processing. do that first.
+  //Some values need processing. ALA can't handle Sampling Event dataSets yet.
   resourceType = gbifDS.type=='CHECKLIST'?'species-list':
                 (gbifDS.type=='OCCURRENCE'?'records':
                 (gbifDS.type=='SAMPLING_EVENT'?'records':'records'));
@@ -335,17 +341,26 @@ function gbifToValDataset(gbifDS, valDR={}, valDP=null, valIN=null, valCO=null) 
   log(`NOTICE | gbifToValDataset | dataProvider: ${JSON.stringify(val.dataProvider)} | dataLinks: ${JSON.stringify(val.dataLinks)}`);
   return val;
 }
+
 /*
-UI: https://www.gbif.org/publisher/b6d09100-919d-4026-b35b-22be3dae7156
-API: http://api.gbif.org/v1/organization/b6d09100-919d-4026-b35b-22be3dae7156
-inputs:
-  gbifOrg: the result from GBIF Org API
-  gbitIpt: the result from GBIF Ipt API
-  valDP: an existing dataProvider result from the VAL Collectory API
+  Map GBIF publishingOrganization properties to ALA dataProvider properties
 
-NOTE: A POST or PUT will fail if any single field is incorrect.
+  ALA Collectory insertable fields are found here:
+    https://github.com/AtlasOfLivingAustralia/collectory-plugin/blob/2ed9737c04db9a07fe9052d40ece43c4e5a2b207/grails-app/services/au/org/ala/collectory/CrudService.groovy#L19
+
+  UI: https://www.gbif.org/publisher/b6d09100-919d-4026-b35b-22be3dae7156
+  API: http://api.gbif.org/v1/organization/b6d09100-919d-4026-b35b-22be3dae7156
+
+  inputs:
+    gbifOrg: the result from GBIF Org API (required)
+    gbitIpt: the result from GBIF Ipt API (optional)
+    valDP: an existing dataProvider result from the VAL Collectory API (optional)
+
+  outputs:
+    valDP: object for POST/PUT body to VAL dataProvider Collectory entity
+
+  NOTE: A POST or PUT will fail if any single field is incorrect.
 */
-
 function gbifToValDataProvider(gbifOrg, gbifIpt={}, valDP={}) {
     // Don't change all nulls to empty strings (""). Some fields require null or non-empty string.
     valDP.name = gbifOrg.title;
@@ -367,8 +382,8 @@ function gbifToValDataProvider(gbifOrg, gbifIpt={}, valDP={}) {
     //default to homePage, then IPT endpoint
     if (gbifOrg.homepage[0]) {
       valDP.websiteUrl = gbifOrg.homepage[0];
-    } else if (gbifIpt.length > 0) {
-      valDP.websiteUrl = gbifIpt.url.endpoints[0].url; //"http://ipt.vtecostudies.org";
+    } else if (gbifIpt.key) {
+      valDP.websiteUrl = gbifIpt.endpoints[0].url; //"http://ipt.vtecostudies.org/ipt-2.3.5/rss.do"
     }
     //valDP.attribution = "";
     valDP.gbifRegistryKey = gbifOrg.key;

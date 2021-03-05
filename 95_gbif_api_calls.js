@@ -12,7 +12,7 @@ module.exports.getGbifInstallation = getGbifInstallation;
   https://api.gbif.org/v1/dataset/f2faaa4c-74e9-457a-8265-06ef5cc73626
 
   inputs:
-    - integer index value of iteration over (to send to logs for easy-reading)
+    - integer index value of loop counter (to send to logs for easy-reading)
     - string 'dataSetKey' == a GBIF guid used to identify a single dataSet
 
   outputs:
@@ -27,10 +27,11 @@ function getGbifDataset(idx, dataSetKey) {
 
   return new Promise((resolve, reject) => {
     Request.get(parms, (err, res, body) => {
-      log(`getGbifDataset | ${idx} | Dataset Key | ${dataSetKey} | ${res.statusCode}`);
-      if (err || res.statusCode > 399) {
+      if (err || res.statusCode > 299) {
+        log(`ERROR | getGbifDataset | ${idx} | Dataset Key | ${dataSetKey} | ${res.statusCode} | error: ${err.message}`);
         reject({});
       } else {
+        log(`SUCCESS | getGbifDataset | ${idx} | Dataset Key | ${dataSetKey} | ${res.statusCode}`);
         resolve(body); //in this case the API always returns an object {}, not an array.
       }
     });
@@ -63,11 +64,11 @@ function getGbifPublisher(idx, orgKey) {
 
   return new Promise((resolve, reject) => {
     Request.get(parms, (err, res, body) => {
-      log(`GBIF Publisher | ${idx} | Organization Key | ${orgKey} | ${res.statusCode}`);
-      if (err || res.statusCode > 399) {
-        log(`getGbifPublisher`, err);
+      if (err || res.statusCode > 299) {
+        log(`ERROR | getGbifPublisher | ${idx} | Organization Key | ${orgKey} | ${res.statusCode} | error: ${err.message}`);
         reject({}); //return empty object to allow process to proceed.
       } else {
+        log(`SUCCESS | getGbifPublisher | ${idx} | Organization Key | ${orgKey} | ${res.statusCode}`);
         resolve(body); //in this case the API always returns an object {}, not an array.
       }
     });
@@ -87,6 +88,15 @@ function getGbifPublisher(idx, orgKey) {
 
   http://api.gbif.org/v1/installation/5ae8b93d-03d9-48f1-8334-f1f251d13f1f
 
+  inputs:
+  - integer index value of iteration over (to send to logs for easy-reading)
+  - string 'orgKey' == a GBIF guid used to identify a single Organization
+  - boolean 'single' to return array (true) object (false)
+
+  outputs:
+    - Array of JSON objects, OR:
+    - JSON object, empty ({}) or filled.
+    - log and console output for success and errors.
 */
 function getGbifInstallations(idx, orgKey, single=false) {
   var parms = {
@@ -96,12 +106,12 @@ function getGbifInstallations(idx, orgKey, single=false) {
 
   return new Promise((resolve, reject) => {
     Request.get(parms, (err, res, body) => {
-      log(`getGbifInstallations | ${idx} | Organization | ${orgKey} | ${res.statusCode}`);
-      if (err || res.statusCode > 399) {
-        log(`getGbifInstallations`, err);
+      if (err || res.statusCode > 299) {
+        log(`ERROR | getGbifInstallations | ${idx} | Organization | ${orgKey} | ${res.statusCode} | error: ${err.message}`);
         if (single) {reject({});}
-        else {reject([]);} //return empty array to allow process to proceed.
+        else {reject([]);}
       } else {
+        log(`SUCCESS | getGbifInstallations | ${idx} | Organization | ${orgKey} | ${res.statusCode}`);
         if (single) {resolve(body[0]);}
         else {resolve(body);} //array of objects
       }
@@ -109,6 +119,16 @@ function getGbifInstallations(idx, orgKey, single=false) {
   });
 }
 
+/*
+  Wrapper for getGbifInstallations to return a single object (the first array element)
+
+  inputs:
+    - integer index value of iteration over (to send to logs for easy-reading)
+    - string 'orgKey' == a GBIF guid used to identify a single Organization
+
+  outputs:
+    - JSON object, empty ({}) or filled.
+*/
 function getGbifInstallation(idx, orgKey) {
   return getGbifInstallations(idx, orgKey, true);
 }
