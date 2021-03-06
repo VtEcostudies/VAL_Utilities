@@ -13,8 +13,9 @@ module.exports.putValDataProvider = putValDataProvider;
 module.exports.postValDataProvider = postValDataProvider;
 
 /*
-  Collectory API search by guid returns an array of objects. We expect a single
-  match. If more than one is found, throw an error.
+  GET dataResource by 'guid' is a search operation returning an array of objects.
+
+  We expect a single match. If more than one is found, throw an error.
 */
 function findValDataResource(idx, dKey) {
   var parms = {
@@ -39,7 +40,7 @@ function findValDataResource(idx, dKey) {
 }
 
 /*
-  Collectory API GET by drUid returns a single object
+  GET dataResource from VAL Collectory by drUid returns a single object
 */
 function getValDataResource(idx, drUid) {
   var parms = {
@@ -50,10 +51,10 @@ function getValDataResource(idx, drUid) {
   return new Promise((resolve, reject) => {
     Request.get(parms, (err, res, body) => {
       if (err || res.statusCode > 299) {
-        log(`ERROR | getValDataResource | ${idx} | drUid | ${drUid} | error:${err?err.message:undefined} | result:${res?res.statusCode:undefined}`);
+        log('ERROR', 'getValDataResource', idx, drUid, err.message, res.statusCode);
         reject({}); //expecting an object
       } else {
-        log(`FOUND | getValDataResource | ${idx} | drUid | ${drUid} | ${parms.url} | ${res.statusCode}`);
+        log('FOUND', 'getValDataResource', idx, drUid, parms.url, res.statusCode);
         resolve(body);
       }
     });
@@ -61,15 +62,19 @@ function getValDataResource(idx, drUid) {
 }
 
 /*
-A successul VAL guid search for dataProvider will return 3 values:
+  GET dataProvider by 'guid' is a search operation returning an array of results.
 
-[{
-"name":"Vermont Center for Ecostudies",
-"uri":"https://collectory.vtatlasoflife.org/ws/dataProvider/dp0",
-"uid":"dp0"
-}]
+  We expect a single match. If more than one is found, throw an error.
 
-return a single object, empty ({}) or filled
+  A successul VAL guid search for dataProvider will return 3 values:
+
+  {
+  "name":"Vermont Center for Ecostudies",
+  "uri":"https://collectory.vtatlasoflife.org/ws/dataProvider/dp0",
+  "uid":"dp0"
+  }
+
+  return a single object, empty ({}) or filled
 */
 function findValDataProvider(idx, orgKey) {
   var parms = {
@@ -86,7 +91,7 @@ function findValDataProvider(idx, orgKey) {
         log(`ERROR | findValDataProvider | ${idx} | GBIF Org Key | ${orgKey} | FOUND ${body.length} items.`);
         reject({});
       } else {
-        log(`FOUND | findValDataProvider | ${idx} | GBIF Org Key | ${orgKey} | result: ${JSON.stringify(body[0])}`);
+        log('FOUND', 'findValDataProvider', idx, 'GBIF Org Key', orgKey, parms.url, body[0]);
         resolve(body[0]);
       }
     });
@@ -94,7 +99,7 @@ function findValDataProvider(idx, orgKey) {
 }
 
 /*
-  Collectory API GET by dpUid returns a single object
+  GET dataProvider from VAL Collectory by dpUid returns a single object
 */
 function getValDataProvider(idx, dpUid) {
   var parms = {
@@ -108,7 +113,7 @@ function getValDataProvider(idx, dpUid) {
         log(`ERROR | getValDataProvider | ${idx} | dpUid | ${dpUid} | error:${err?err.message:undefined} | result:${res?res.statusCode:undefined}`);
         reject({}); //expecting an object
       } else {
-        log(`FOUND | getValDataProvider | ${idx} | dpUid | ${dpUid} | ${parms.url} | ${res.statusCode}`);
+        log('SUCCESS', 'getValDataProvider', idx, dpUid, parms.url);
         resolve(body);
       }
     });
@@ -116,8 +121,10 @@ function getValDataProvider(idx, dpUid) {
 }
 
 /*
+  POST a new dataResource to VAL Collectory API
 */
 function postValDataResource(idx, dKey, gbifDS, dpUid=null, inUid=null, coUid=null) {
+
   var pBody = gbifToValDataset(gbifDS, dpUid, inUid, coUid); //POST Body - create data format for LA Collectory from GBIF
 
   var parms = {
@@ -129,19 +136,23 @@ function postValDataResource(idx, dKey, gbifDS, dpUid=null, inUid=null, coUid=nu
   return new Promise((resolve, reject) => {
     Request.post(parms, (err, res, body) => {
       if (err || res.statusCode > 299) {
-        log(`ERROR | postValDataResource | ${idx} | dataset | ${dKey} | ${parms.url} | dpUID: ${dpUid} | ${res.statusCode} | ${err.message}`);
+        log('ERROR', 'postValDataResource', idx, dKey, parms.url, dpUid, res.statusCode, err.message);
         reject({});
       } else {
-        log(`ERROR | postValDataResource | ${idx} | dataset | ${dKey} |  ${parms.url} | dpUID: ${dpUid} | ${res.statusCode}`);
-        log(body); //What is return from successful POST?
+        log('SUCCESS', 'postValDataResource', idx, dKey, parms.url, dpUid, res.statusCode);
+        log(idx, body); //What is return from successful POST?
         resolve(body);
       }
     });
   });
 }
 
+/*
+  PUT existing dataResource to VAL Collectory API
+*/
 function putValDataResource(idx, dKey, gbifDS, valDR, dpUid=null, inUid=null, coUid=null) {
-  var pBody = gbifToValDataset(gbifDS, valDR, dpUid, inUid, coUid); //PuT Body - create data format for LA Collectory from GBIF
+
+  var pBody = gbifToValDataset(gbifDS, valDR, dpUid, inUid, coUid); //PUT Body - create data format for LA Collectory from GBIF
 
   var parms = {
     url: `${urls.collectory}/ws/dataResource/${valDR.uid}`,
@@ -163,7 +174,10 @@ function putValDataResource(idx, dKey, gbifDS, valDR, dpUid=null, inUid=null, co
   });
 }
 
-function postValDataProvider(idx, gbifOrg, gbifIpt=[]) {
+/*
+  POST a new dataProvider to VAL Collectory API
+*/
+function postValDataProvider(idx, gbifOrg, gbifIpt={}) {
 
   var pBody = gbifToValDataProvider(gbifOrg, gbifIpt); //POST Body - create data format for LA Collectory from GBIF
 
@@ -192,9 +206,12 @@ function postValDataProvider(idx, gbifOrg, gbifIpt=[]) {
   });
 }
 
-function putValDataProvider(idx, gbifOrg, gbifIpt=[], valDP) {
-  var pBody = {};
-  pBody = gbifToValDataProvider(gbifOrg, gbifIpt); //PUT Body - create data format for LA Collectory from GBIF
+/*
+  PUT existing dataProvider to VAL Collectory API
+*/
+function putValDataProvider(idx, gbifOrg, gbifIpt={}, valDP) {
+
+  var pBody = gbifToValDataProvider(gbifOrg, gbifIpt); //PUT Body - create data format for LA Collectory from GBIF
 
   var parms = {
     url: `${urls.collectory}/ws/dataProvider/${valDP.uid}`,
@@ -352,14 +369,14 @@ function gbifToValDataset(gbifDS, valDR={}, valDP=null, valIN=null, valCO=null) 
   API: http://api.gbif.org/v1/organization/b6d09100-919d-4026-b35b-22be3dae7156
 
   inputs:
-    gbifOrg: the result from GBIF Org API (required)
-    gbitIpt: the result from GBIF Ipt API (optional)
-    valDP: an existing dataProvider result from the VAL Collectory API (optional)
+    gbifOrg: object, the result from GBIF Org API (required)
+    gbitIpt: object, the result from GBIF Ipt API (optional)
+    valDP: object, an existing dataProvider result from the VAL Collectory API (optional)
 
   outputs:
     valDP: object for POST/PUT body to VAL dataProvider Collectory entity
 
-  NOTE: A POST or PUT will fail if any single field is incorrect.
+  NOTE: A POST or PUT will fail if any field is incorrect.
 */
 function gbifToValDataProvider(gbifOrg, gbifIpt={}, valDP={}) {
     // Don't change all nulls to empty strings (""). Some fields require null or non-empty string.
