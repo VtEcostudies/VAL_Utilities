@@ -1,13 +1,12 @@
-const paths = require('./00_config').paths;
-var logDir = paths.logDir
-var logName = 'log';
-var logStream = null;
+const fs = require('fs');
+const moment = require('moment');
 
 module.exports.log = log;
 module.exports.init = init;
 
-const fs = require('fs');
-const moment = require('moment');
+var logDir = '../log';
+var logName = 'log';
+var logStream = null;
 
 /*
   Initialize log output to file. Call this before the first call to log() below.
@@ -25,19 +24,24 @@ const moment = require('moment');
     - if you do not await, you will get multple calls to init(), and multiple files
 */
 function init(name=null, dir=null) {
+  var newDir = false;
   return new Promise((resolve, reject) => {
     if (!logStream) {
       logDir = dir ? dir : logDir;
       logName = name ? name : logName;
-        logStream = fs.createWriteStream(`${logDir}/${moment().format('YYYYMMDD-HHMMSS')}_${logName}.log`);
-        logStream.on('open', () => {resolve(true);});
-        logStream.on('error', (err) => {
+      if (!fs.existsSync(logDir)) {
+        newDir = fs.mkdirSync(logDir, {"recursive":true});
+        console.log('93_log_utilities |', logDir, 'does not exist |', newDir, 'is the result of mkdirSync');
+      }
+      logStream = fs.createWriteStream(`${logDir}/${moment().format('YYYYMMDD-hhmmss')}_${logName}.log`);
+      logStream.on('open', () => {resolve(logStream);});
+      logStream.on('error', (err) => {
           console.log('93_log_utilities | init fs.createWriteStream | ERROR:', err);
           logStream = null;
           resolve(err); //if we reject here, try..catch in log() traps this error so we can't proceed.
         });
       } else {
-        resolve(true);
+        resolve(logStream);
       }
     });
 }
@@ -48,21 +52,22 @@ function init(name=null, dir=null) {
   log() now handles a variable argument list. It searches that list for these objects
     - {console: true/false} turns on/off console output for this specific call to log()
 */
-async function log(...args) {
-  var consol = true; //flag console output. In large, fast processing on Windows, console is limiting speed factor. Not true on Linux.
+async function log(consol=0,...args) {
   var output =  ''; //output for one arg's value(s)
   var result = null; //accept the result of the init() operation
   try {
-    if (!logStream) {result = await init();} //init always returns success. it not, try->catch traps this as error.
-    output = moment().format('YYYY-MM-DD_HH:MM:SS');
+    output = moment().format('YYYY-MM-DD_hh:mm:ss');
     for (var i = 0; i < args.length; i++) {
       if (typeof args[i] == 'object') {
-        if (args[i]['console']) {consol = args[i].console;}
-        else {output += ' | ' + JSON.stringify(args[i]);}
+        //console.log('log arg', i, args[i]);
+        //if (args[i]['console']) {consol = args[i].console;}
+        //else {output += ' | ' + JSON.stringify(args[i]);}
+        output += ' | ' + JSON.stringify(args[i]);
       } else {
         output += ' | ' + args[i];
       }
     }
+    if (!logStream) {result = await init();} //init always returns success. it not, try->catch traps this as error.
     if (!logStream || consol) {console.log(output);}
     if (logStream) {logStream.write(output + '\n');}
   } catch(error) {

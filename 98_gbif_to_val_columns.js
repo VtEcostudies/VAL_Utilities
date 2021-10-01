@@ -1,7 +1,9 @@
 module.exports.initValObject = initValObject;
 module.exports.gbifToValDirect = gbifToValDirect;
+module.exports.gbifOccSpeciesToValDirect = gbifOccSpeciesToValDirect;
 module.exports.gbifToValIngest = gbifToValIngest;
 module.exports.getParentKeyFromTreeKeys = getParentKeyFromTreeKeys;
+module.exports.parseCanonAuthorFromScientificRank = parseCanonAuthorFromScientificRank;
 
 function initValObject() {
 
@@ -24,6 +26,9 @@ function initValObject() {
 /*
 Convert gbif fields to val_species columns for output file and ingestion into
 val_species database table.
+
+This is used by output emanating from GBIF species endpoints, not occurrence species_list endpoints.
+The fields from those are quite different.
 */
 function gbifToValDirect(gbif) {
 
@@ -62,8 +67,78 @@ function gbifToValDirect(gbif) {
   val.familyId=gbif.familyKey?gbif.familyKey:null;
   val.genus=gbif.genus?gbif.genus:null;
   val.genusId=gbif.genusKey?gbif.genusKey:null;
-  val.species=gbif.species?gbif.species:null;
-  val.speciesId=gbif.speciesKey?gbif.speciesKey:null;
+  val.species=gbif.species?gbif.species:null; //if accepted species: null; if synonym species or a subspecies: accepted species name
+  val.speciesId=gbif.speciesKey?gbif.speciesKey:null; //if accepted species: null; if synonym species or a subspecies: accepted species key
+
+  return val;
+}
+
+/*
+Convert gbif occurrence download SPECIES_LIST file fields to val_species columns for ingestion into
+val_species database table.
+
+Created on 2021-05-11. Column headings for that dataset on that date:
+
+index GBIF name
+0	taxonKey
+1	scientificName
+2	acceptedTaxonKey
+3	acceptedScientificName
+4	numberOfOccurrences
+5	taxonRank
+6	taxonomicStatus
+7	kingdom
+8	kingdomKey
+9	phylum
+10	phylumKey
+11	class
+12	classKey
+13	order
+14	orderKey
+15	family
+16	familyKey
+17	genus
+18	genusKey
+19	species
+20	speciesKey
+21	iucnRedListCategory
+
+*/
+function gbifOccSpeciesToValDirect(gbif) {
+
+  var val = initValObject(); //necessary to make field-order consistent across rows and datasets
+
+  var canonAuthor = parseCanonAuthorFromScientificRank(gbif.scientificName, gbif.taxonRank);
+  gbif.canonicalName = canonAuthor.canon;
+  gbif.authorship = canonAuthor.author;
+
+  val.gbifId=gbif.taxonKey;
+  val.taxonId=gbif.taxonKey;
+  val.scientificName=gbif.canonicalName?gbif.canonicalName:gbif.scientificName; //scientificName often contains author. nameindexer cannot handle that, so remove it.
+  val.acceptedNameUsageId=gbif.acceptedTaxonKey?gbif.acceptedTaxonKey:gbif.taxonKey;
+  val.acceptedNameUsage=gbif.acceptedScientificName?gbif.acceptedScientificName:gbif.scientificName;
+  val.taxonRank=gbif.taxonRank?gbif.taxonRank.toLowerCase():null;
+  val.taxonomicStatus=gbif.taxonomicStatus?gbif.taxonomicStatus.toLowerCase():null;
+  val.parentNameUsageId=gbif.parentKey?gbif.parentKey:getParentKeyFromTreeKeys(gbif);
+  val.nomenclaturalCode='GBIF';
+  val.scientificNameAuthorship=gbif.authorship?gbif.authorship:null;
+  val.vernacularName=gbif.vernacularName?gbif.vernacularName:null;
+  val.taxonRemarks=gbif.remarks?gbif.remarks:null;
+
+  val.kingdom=gbif.kingdom?gbif.kingdom:null;
+  val.kingdomId=gbif.kingdomKey?gbif.kingdomKey:null;;
+  val.phylum=gbif.phylum?gbif.phylum:null;
+  val.phylumId=gbif.phylumKey?gbif.phylumKey:null;
+  val.class=gbif.class?gbif.class:null;
+  val.classId=gbif.classKey?gbif.classKey:null;
+  val.order=gbif.order?gbif.order:null;
+  val.orderId=gbif.orderKey?gbif.orderKey:null;
+  val.family=gbif.family?gbif.family:null;
+  val.familyId=gbif.familyKey?gbif.familyKey:null;
+  val.genus=gbif.genus?gbif.genus:null;
+  val.genusId=gbif.genusKey?gbif.genusKey:null;
+  val.species=gbif.species?gbif.species:null; //if accepted species: null; if synonym species or a subspecies: accepted species name
+  val.speciesId=gbif.speciesKey?gbif.speciesKey:null; //if accepted species: null; if synonym species or a subspecies: accepted species key
 
   return val;
 }
@@ -171,11 +246,11 @@ function gbifToValIngest(gbif, src) {
 
 function getParentKeyFromTreeKeys(gbif) {
   var parentId = null;
-
-  if (!gbif.rank) {return null;}
+  var rank = gbif.rank?gbif.rank:(gbif.taxonRank?gbif.taxonRank:null)
+  if (!rank) {return null;}
 
   //parentNameUsageID is key of next higher rank (except for kingdom, which is itself)
-  switch(gbif.rank.toLowerCase()) {
+  switch(rank.toLowerCase()) {
     case 'kingdom': parentId = gbif.kingdomKey; break;
     case 'phylum': parentId = gbif.kingdomKey; break;
     case 'class': parentId = gbif.phylumKey; break;
@@ -188,4 +263,73 @@ function getParentKeyFromTreeKeys(gbif) {
   }
 
   return parentId;
+}
+
+/*
+  This was an experiment in trying to handle the GBIF species download which accompanies an updated
+  GBIF occurrence download by using sciName and taxonomicRank without going back to the GBIF API
+  to get 'canonicalName'.
+
+  The GBIF species dwca has odd names in it which should be filtered out, eg. 'BOLD:XXXX'.
+  Scientific naming allows multiple ways to refer to subspecies, variety, etc. like:
+
+    - {genus} {species} {subspecies} author
+    - {genus} {species} subsp.|var. {subspecies} (author, year)
+
+  That is almost certainly not a complete list, but as of 2021-05-11 it caught all variations
+  in the SPECIES_LIST download of an occurrence update.
+*/
+function parseCanonAuthorFromScientificRank(name, rank) {
+
+  var regex = /  /g;
+  if (regex.test(name)) { //critical: replace double spaces with single spaces
+    name = name.replace(regex, " ");
+  }
+
+  var tokens = name.split(" ").slice(); //break name into tokens by spaces
+  var canon = null;
+  var author = null;
+
+  //console.log('97_utilities::parseCanonFromScientificRank', name, rank, tokens);
+
+  switch(rank.toLowerCase()) {
+    case 'species':
+      canon = tokens[0]+' '+tokens[1];
+      for (var i=2; i<tokens.length; i++) {
+        if (2==i) {author = tokens[i];}
+        else {author += ' '+tokens[i];}
+      }
+      break;
+    case 'subspecies':
+    case 'variety':
+      switch(tokens[2]) { //sometimes they put 'subsp.' or 'var.' between names
+        case 'subsp.':
+        case 'var.':
+          canon = tokens[0]+' '+tokens[1]+' '+tokens[3];
+          for (var i=4; i<tokens.length; i++) {
+            if (4==i) {author = tokens[i];}
+            else {author += ' '+tokens[i];}
+          }
+          break;
+        default:
+          canon = tokens[0]+' '+tokens[1]+' '+tokens[2];
+          for (var i=3; i<tokens.length; i++) {
+            if (3==i) {author = tokens[i];}
+            else {author += ' '+tokens[i];}
+          }
+          break;
+      }
+      //console.log(`97_utilities::parseCanonFromScientificRank | ${name} | ${rank} | tokens:`, tokens);
+      //console.log(`97_utilities::parseCanonFromScientificRank | canonicalName:`, canon);
+      break;
+    default:
+      canon = tokens[0];
+      for (var i=1; i<tokens.length; i++) {
+        if (1==i) {author = tokens[i];}
+        else {author += ' '+tokens[i];}
+      }
+      break;
+  }
+  //console.log(`parseCanonFromScientificRank | ${name} | ${rank}`, {canon:canon, author:author});
+  return {canon:canon, author:author};
 }

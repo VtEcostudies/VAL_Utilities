@@ -26,13 +26,13 @@ function findValDataResource(idx, dKey) {
   return new Promise((resolve, reject) => {
     Request.get(parms, (err, res, body) => {
       if (err || res.statusCode > 299) {
-        log(`ERROR | findValDataResource | err:${err?err:undefined} | result:${res?res.statusCode:undefined}`);
+        log(1,`ERROR | findValDataResource | err:${err?err:undefined} | result:${res?res.statusCode:undefined}`);
         reject({}); //expecting an object
       } else if (1 != body.length) {
-        log(`ERROR | findValDataResource | FOUND ${body.length} Data Resources`);
-        reject({}); //expecting an object
+        log(1,`ERROR | findValDataResource | FOUND ${body.length} Data Resources`);
+        resolve({}); //MUST RESOLVE HERE, DUE TO UNHANDLE PROMISES BY CALLER. Expecting an object.
       } else {
-        log(`FOUND | findValDataResource | ${idx} | dataset | ${dKey} | ${parms.url} | result: ${JSON.stringify(body[0])}`);
+        log(1,`FOUND | findValDataResource | ${idx} | dataset | ${dKey} | ${parms.url} | result: ${JSON.stringify(body[0])}`);
         resolve(body[0]);
       }
     });
@@ -51,10 +51,10 @@ function getValDataResource(idx, drUid) {
   return new Promise((resolve, reject) => {
     Request.get(parms, (err, res, body) => {
       if (err || res.statusCode > 299) {
-        log('ERROR', 'getValDataResource', idx, drUid, err.message, res.statusCode);
+        log(1,'ERROR', 'getValDataResource', idx, drUid, err?err.message:undefined, res?res.statusCode:undefined);
         reject({}); //expecting an object
       } else {
-        log('FOUND', 'getValDataResource', idx, drUid, parms.url, res.statusCode);
+        log(1,'FOUND', 'getValDataResource', idx, drUid, parms.url, res.statusCode);
         resolve(body);
       }
     });
@@ -85,13 +85,13 @@ function findValDataProvider(idx, orgKey) {
   return new Promise((resolve, reject) => {
     Request.get(parms, (err, res, body) => {
       if (err || res.statusCode > 299) {
-        log(`ERROR | findValDataProvider | ${idx} | GBIF Org Key | ${orgKey} | status: ${res.statusCode} | Error: ${err?err.message:undefined}`);
+        log(1,`ERROR | findValDataProvider | ${idx} | GBIF Org Key | ${orgKey} | status: ${res?res.statusCode:undefined} | Error: ${err?err.message:undefined}`);
         reject({});
       } else if (1 != body.length) {
-        log(`ERROR | findValDataProvider | ${idx} | GBIF Org Key | ${orgKey} | FOUND ${body.length} items.`);
-        reject({});
+        log(1,`ERROR | findValDataProvider | ${idx} | GBIF Org Key | ${orgKey} | FOUND ${body.length} items.`);
+        resolve({});
       } else {
-        log('FOUND', 'findValDataProvider', idx, 'GBIF Org Key', orgKey, parms.url, body[0]);
+        log(1,'FOUND', 'findValDataProvider', idx, 'GBIF Org Key', orgKey, parms.url, body[0]);
         resolve(body[0]);
       }
     });
@@ -110,10 +110,10 @@ function getValDataProvider(idx, dpUid) {
   return new Promise((resolve, reject) => {
     Request.get(parms, (err, res, body) => {
       if (err || res.statusCode > 299) {
-        log(`ERROR | getValDataProvider | ${idx} | dpUid | ${dpUid} | error:${err?err.message:undefined} | result:${res?res.statusCode:undefined}`);
+        log(1,`ERROR | getValDataProvider | ${idx} | dpUid | ${dpUid} | error:${err?err.message:undefined} | result:${res?res.statusCode:undefined}`);
         reject({}); //expecting an object
       } else {
-        log('SUCCESS', 'getValDataProvider', idx, dpUid, parms.url);
+        log(1,'SUCCESS', 'getValDataProvider', idx, dpUid, parms.url);
         resolve(body);
       }
     });
@@ -136,11 +136,11 @@ function postValDataResource(idx, dKey, gbifDS, dpUid=null, inUid=null, coUid=nu
   return new Promise((resolve, reject) => {
     Request.post(parms, (err, res, body) => {
       if (err || res.statusCode > 299) {
-        log('ERROR', 'postValDataResource', idx, dKey, parms.url, dpUid, res.statusCode, err.message);
+        log(1,'ERROR', 'postValDataResource', idx, dKey, parms.url, dpUid, res?res.statusCode:undefined, err?err.message:undefined);
         reject({});
       } else {
-        log('SUCCESS', 'postValDataResource', idx, dKey, parms.url, dpUid, res.statusCode);
-        log(idx, body); //What is return from successful POST?
+        log(1,'SUCCESS', 'postValDataResource', idx, dKey, parms.url, dpUid, res.statusCode);
+        //log(1, idx, body); //What is return from successful POST?
         resolve(body);
       }
     });
@@ -149,6 +149,13 @@ function postValDataResource(idx, dKey, gbifDS, dpUid=null, inUid=null, coUid=nu
 
 /*
   PUT existing dataResource to VAL Collectory API
+
+  Inputs:
+    - idx loop iterator for display in logs
+    - dKey GBIF
+
+  Outputs:
+    -
 */
 function putValDataResource(idx, dKey, gbifDS, valDR, dpUid=null, inUid=null, coUid=null) {
 
@@ -163,11 +170,11 @@ function putValDataResource(idx, dKey, gbifDS, valDR, dpUid=null, inUid=null, co
   return new Promise((resolve, reject) => {
     Request.put(parms, (err, res, body) => {
       if (err || res.statusCode > 299) {
-        log(`ERROR | putValDataResource | ${idx} | dataset | ${dKey} |  ${parms.url} | dpUID: ${dpUid} | ${res.statusCode} | ${err.message}`);
+        log(1, `ERROR | putValDataResource | ${idx} | dataset | ${dKey} |  ${parms.url} | dpUID: ${dpUid} | ${res?res.statusCode:undefined} | ${err?err.message:undefined}`);
         reject({});
       } else {
-        log(`SUCCESS | putValDataResource | ${idx} | dataset | ${dKey} |  ${parms.url} | dpUID: ${dpUid} | ${res.statusCode}`);
-        //log(body); //return from successful PUT just a text message.
+        log(1, `SUCCESS | putValDataResource | ${idx} | dataset | ${dKey} |  ${parms.url} | dpUID: ${dpUid} | ${res.statusCode}`);
+        //log(1, idx, body); //return from successful PUT just a text message.
         resolve(body);
       }
     });
@@ -190,16 +197,16 @@ function postValDataProvider(idx, gbifOrg, gbifIpt={}) {
   return new Promise((resolve, reject) => {
     Request.post(parms, (err, res, body) => {
       if (err) {
-        log(`ERROR | postValDataProvider | ${idx} | GBIF Org | ${gbifOrg.title} | error: ${err.message} | Req Params:`);
-        log(parms);
+        log(1, `ERROR | postValDataProvider | ${idx} | GBIF Org | ${gbifOrg.title} | error: ${err.message} | Req Params:`);
+        log(1, parms);
         reject(err);
       } else if (res.statusCode > 299) {
-        log(`ERROR | postValDataProvider | ${idx} | GBIF Org | ${gbifOrg.title}| Bad Result: ${res.statusCode} | Req Params:`);
-        log(parms);
+        log(1, `ERROR | postValDataProvider | ${idx} | GBIF Org | ${gbifOrg.title}| Bad Result: ${res.statusCode} | Req Params:`);
+        log(1, parms);
         reject(res);
       } else {
-        log(`SUCCESS | postValDataProvider | ${idx} | GBIF Org | ${gbifOrg.title}| Status: ${res.statusCode}`);
-        log(body);
+        log(1, `SUCCESS | postValDataProvider | ${idx} | GBIF Org | ${gbifOrg.title}| Status: ${res.statusCode}`);
+        log(1, body);
         resolve(body);
       }
     });
@@ -222,16 +229,16 @@ function putValDataProvider(idx, gbifOrg, gbifIpt={}, valDP) {
   return new Promise((resolve, reject) => {
     Request.put(parms, (err, res, body) => {
       if (err) {
-        log(`ERROR | putValDataProvider | ${idx} | GBIF Org | ${gbifOrg.title} | VAL dataProvider: ${valDP.uid} | Error: ${err.message} | Req Params:`);
-        log(parms);
+        log(1, `ERROR | putValDataProvider | ${idx} | GBIF Org | ${gbifOrg.title} | VAL dataProvider: ${valDP.uid} | Error: ${err.message} | Req Params:`);
+        log(1, parms);
         reject({});
       } else if (res.statusCode > 299) {
-        log(`ERROR | putValDataProvider | ${idx} | VAL dataProvider: ${valDP.uid} | Bad Result: ${res.statusCode} | Req Params:`);
-        log(parms);
+        log(1, `ERROR | putValDataProvider | ${idx} | VAL dataProvider: ${valDP.uid} | Bad Result: ${res.statusCode} | Req Params:`);
+        log(1, parms);
         reject({});
       } else {
-        log(`SUCCESS | putValDataProvider | ${idx} | GBIF Org Key | ${gbifOrg.key} | VAL dataProvider: ${valDP.uid} | Status: ${res.statusCode}`);
-        //log(body);
+        log(1, `SUCCESS | putValDataProvider | ${idx} | GBIF Org Key | ${gbifOrg.key} | VAL dataProvider: ${valDP.uid} | Status: ${res.statusCode}`);
+        //log(1, body);
         resolve(body);
       }
     });
@@ -355,7 +362,7 @@ function gbifToValDataset(gbifDS, valDR={}, valDP=null, valIN=null, valCO=null) 
   if (valCO) {
     val.dataLinks.push(valCO);
   }
-  log(`NOTICE | gbifToValDataset | dataProvider: ${JSON.stringify(val.dataProvider)} | dataLinks: ${JSON.stringify(val.dataLinks)}`);
+  log(1, `NOTICE | gbifToValDataset | dataProvider: ${JSON.stringify(val.dataProvider)} | dataLinks: ${JSON.stringify(val.dataLinks)}`);
   return val;
 }
 

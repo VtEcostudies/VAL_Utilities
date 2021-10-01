@@ -1,4 +1,4 @@
-const urls =  require('./00_config').urls;
+const urls = require('./00_config').urls;
 const Request = require('request');
 const log = require('./93_log_utilities').log;
 
@@ -6,6 +6,7 @@ module.exports.getGbifDataset = getGbifDataset;
 module.exports.getGbifPublisher = getGbifPublisher;
 module.exports.getGbifInstallations = getGbifInstallations;
 module.exports.getGbifInstallation = getGbifInstallation;
+module.exports.getGbifOccurrence = getGbifOccurrence;
 
 /*
   Use this to get publishingOrganizationKey from datasetKey. Eg.:
@@ -28,7 +29,7 @@ function getGbifDataset(idx, dataSetKey) {
   return new Promise((resolve, reject) => {
     Request.get(parms, (err, res, body) => {
       if (err || res.statusCode > 299) {
-        log(`ERROR | getGbifDataset | ${idx} | Dataset Key | ${dataSetKey} | ${res.statusCode} | error: ${err.message}`);
+        log(`ERROR | getGbifDataset | ${idx} | Dataset Key | ${dataSetKey} | ${res?res.statusCode:undefined} | error: ${err?err.message:undefined} | url: ${parms.url}`);
         reject({});
       } else {
         log(`SUCCESS | getGbifDataset | ${idx} | Dataset Key | ${dataSetKey} | ${res.statusCode}`);
@@ -52,9 +53,9 @@ function getGbifDataset(idx, dataSetKey) {
   - integer index value of iteration over (to send to logs for easy-reading)
   - string 'orgKey' == a GBIF guid used to identify a single Organization
 
-outputs:
-  - JSON object, empty ({}) or filled.
-  - log and console output for success and errors.
+  outputs:
+    - JSON object, empty ({}) or filled.
+    - log and console output for success and errors.
 */
 function getGbifPublisher(idx, orgKey) {
   var parms = {
@@ -65,7 +66,7 @@ function getGbifPublisher(idx, orgKey) {
   return new Promise((resolve, reject) => {
     Request.get(parms, (err, res, body) => {
       if (err || res.statusCode > 299) {
-        log(`ERROR | getGbifPublisher | ${idx} | Organization Key | ${orgKey} | ${res.statusCode} | error: ${err.message}`);
+        log(`ERROR | getGbifPublisher | ${idx} | Organization Key | ${orgKey} | ${res?res.statusCode:undefined} | error: ${err?err.message:undefined}`);
         reject({}); //return empty object to allow process to proceed.
       } else {
         log(`SUCCESS | getGbifPublisher | ${idx} | Organization Key | ${orgKey} | ${res.statusCode}`);
@@ -107,7 +108,7 @@ function getGbifInstallations(idx, orgKey, single=false) {
   return new Promise((resolve, reject) => {
     Request.get(parms, (err, res, body) => {
       if (err || res.statusCode > 299) {
-        log(`ERROR | getGbifInstallations | ${idx} | Organization | ${orgKey} | ${res.statusCode} | error: ${err.message}`);
+        log(`ERROR | getGbifInstallations | ${idx} | Organization | ${orgKey} | ${res?res.statusCode:undefined} | error: ${err?err.message:undefined}`);
         if (single) {reject({});}
         else {reject([]);}
       } else {
@@ -131,4 +132,33 @@ function getGbifInstallations(idx, orgKey, single=false) {
 */
 function getGbifInstallation(idx, orgKey) {
   return getGbifInstallations(idx, orgKey, true);
+}
+
+/*
+inputs:
+  - integer index value of loop counter (to send to logs for easy-reading)
+  - string 'occurrenceKey' == a GBIF value (usually numeric) used to identify a single occurrence
+
+outputs:
+  - JSON object, empty ({}) or filled.
+  - log and console output for success and errors.
+
+*/
+function getGbifOccurrence(idx, occurrenceKey) {
+  var parms = {
+    url: `http://api.gbif.org/v1/occurrence/${occurrenceKey}`,
+    json: true
+  };
+
+  return new Promise((resolve, reject) => {
+    Request.get(parms, (err, res, body) => {
+      if (err || res.statusCode > 299) {
+        log(`ERROR | getGbifOccurrence | ${idx} | Occurrence ID | ${occurrenceKey} | ${res?res.statusCode:undefined} | error: ${err?err.message:undefined} | url: ${parms.url}`);
+        reject({});
+      } else {
+        log(`SUCCESS | getGbifOccurrence | ${idx} | Occurrence ID | ${occurrenceKey} | ${res.statusCode}`);
+        resolve(body); //in this case the API always returns an object {}, not an array.
+      }
+    });
+  });
 }
