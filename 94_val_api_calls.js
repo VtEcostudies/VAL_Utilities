@@ -38,7 +38,7 @@ function getImages(offset=0) {
 }
 
 /*
-  https://images.vtatlasoflife.org/ws/scheduleArtifactGeneration/c75553df-64a0-4e36-81f3-2a35d615612e -H "apiKey: f4d5695a-2a4f-43c6-bec8-d7ca38fa0a1e"
+  https://images.vtatlasoflife.org/ws/scheduleArtifactGeneration/c75553df-64a0-4e36-81f3-2a35d615612e -H "apiKey: {apiKey goes here}"
 */
   function processImageArtifacts(idx, imageKey, apiKey) {
     var parms = {
