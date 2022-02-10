@@ -89,5 +89,6 @@ exports.paths = {
 
 exports.urls = {
   primary:  "https://vtatlasoflife.org",
-  collectory: "https://collectory.vtatlasoflife.org"
+  collectory: "https://collectory.vtatlasoflife.org",
+  images: "https://images.vtatlasoflife.org"
 };

@@ -12,6 +12,54 @@ module.exports.gbifToValDataset = gbifToValDataset;
 module.exports.putValDataProvider = putValDataProvider;
 module.exports.postValDataProvider = postValDataProvider;
 
+module.exports.getImages = getImages;
+module.exports.processImageArtifacts = processImageArtifacts;
+
+/*
+  GET images from VAL image-service API
+*/
+function getImages(offset=0) {
+  var parms = {
+    url: `${urls.images}/ws/search?q=*&offset=${offset}`,
+    json: true
+  };
+
+  return new Promise((resolve, reject) => {
+    Request.get(parms, (err, res, body) => {
+      if (err || res.statusCode > 299) {
+        log(1, 'ERROR', 'getValImages', err?err.message:undefined, res?res.statusCode:undefined);
+        reject({}); //expecting an object
+      } else {
+        log(1, 'FOUND', 'getValImages', 'imageCount:', body.images.length, 'totalImageCount:', body.totalImageCount, parms.url, res.statusCode);
+        resolve(body);
+      }
+    });
+  });
+}
+
+/*
+  https://images.vtatlasoflife.org/ws/scheduleArtifactGeneration/c75553df-64a0-4e36-81f3-2a35d615612e -H "apiKey: f4d5695a-2a4f-43c6-bec8-d7ca38fa0a1e"
+*/
+  function processImageArtifacts(idx, imageKey, apiKey) {
+    var parms = {
+      url: `${urls.images}/ws/scheduleArtifactGeneration/${imageKey}`,
+      headers: {"apiKey": apiKey},
+      json: true
+    };
+
+    return new Promise((resolve, reject) => {
+      Request.post(parms, (err, res, body) => {
+        if (err || res.statusCode > 299) {
+          log(1, 'ERROR', 'processImageArtifacts', idx, imageKey, err?err.message:undefined, res?res.statusCode:undefined);
+          reject({}); //expecting an object
+        } else {
+          log(1, 'SUCCESS', idx, 'processImageArtifacts', parms.url, res.statusCode);
+          resolve(body);
+        }
+      });
+    });
+  }
+
 /*
   GET dataResource by 'guid' is a search operation returning an array of objects.
 
