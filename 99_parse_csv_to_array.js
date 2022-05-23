@@ -169,7 +169,7 @@ function csvLineTo1DArray(text, delim=',', filterAscii=false) {
     let p = '', row = [''], ret = [row], i = 0, s = !0, l;
     for (l of text) {
         //if ('"' === l) { //this used to be 1st condition
-        if (delim === l) { //putting delim check before dbl-quote check fixes unbalanced-quote errors
+        if (delim === l && s) { //putting delim check before dbl-quote check fixes unbalanced-quote errors
           if ('""' == row[i]) {row[i] = '';} //remove empty double-quotes
           row[i] = row[i].replace(/\s+/g, " "); //replace whitespace with actual space
           if (filterAscii) row[i] = row[i].replace(/[^ -~]+/g, ""); //filter ASCII
