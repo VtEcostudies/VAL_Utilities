@@ -33,9 +33,22 @@ types.setTypeParser(1082, parseDate);
  */
 module.exports = {
 
-  connect: (db_params) => {
+  connect: async (db_params) => {
     console.log(`db_postgres.js::connect()`, db_params);
-    connPool = new Pool(db_params);
+
+    connPool = await new Pool(db_params)
+
+    //NEW: test the connection and return a promise.
+    return new Promise((resolve, reject) => {
+      connPool.connect((err, client, release) => {
+        if (err) {
+          reject('Error acquiring DB client')
+        } else {
+          resolve('DB Connection Success')
+        }
+        release();
+      })
+    })
   },
 
   test: () => {
