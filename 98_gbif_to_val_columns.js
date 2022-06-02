@@ -290,7 +290,7 @@ function parseCanonAuthorFromScientificRank(name, rank) {
   var canon = null;
   var author = null;
 
-  //console.log('97_utilities::parseCanonFromScientificRank', name, rank, tokens);
+  console.log('98_gbif_to_val_columns::parseCanonFromScientificRank', name, rank, tokens);
 
   switch(rank.toLowerCase()) {
     case 'species':
@@ -302,9 +302,11 @@ function parseCanonAuthorFromScientificRank(name, rank) {
       break;
     case 'subspecies':
     case 'variety':
+    case 'form':
       switch(tokens[2]) { //sometimes they put 'subsp.' or 'var.' between names
         case 'subsp.':
         case 'var.':
+        case 'f.':
           canon = tokens[0]+' '+tokens[1]+' '+tokens[3];
           for (var i=4; i<tokens.length; i++) {
             if (4==i) {author = tokens[i];}
@@ -319,8 +321,8 @@ function parseCanonAuthorFromScientificRank(name, rank) {
           }
           break;
       }
-      //console.log(`97_utilities::parseCanonFromScientificRank | ${name} | ${rank} | tokens:`, tokens);
-      //console.log(`97_utilities::parseCanonFromScientificRank | canonicalName:`, canon);
+      //console.log(`98_gbif_to_val_columns::parseCanonFromScientificRank | ${name} | ${rank} | tokens:`, tokens);
+      //console.log(`98_gbif_to_val_columns::parseCanonFromScientificRank | canonicalName:`, canon);
       break;
     default:
       canon = tokens[0];

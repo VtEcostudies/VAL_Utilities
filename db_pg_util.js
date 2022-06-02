@@ -24,7 +24,7 @@ async function getColumns(tableName, columns=[], types=[]) {
 
     await query(text)
         .then(res => {
-            //console.log(res);
+            //console.log('getColumns in VAL_Utilities/db_pg_util.js | result', res);
             res.fields.forEach(fld => {
                 columns.push(String(fld.name));
                 types.push(fld.dataTypeID);

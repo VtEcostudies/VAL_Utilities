@@ -1,7 +1,6 @@
 const { Pool } = require('pg'); //a Postgres Connection Pool
-var connPool = null;
+var connPool = null; //new approach REQUIRES a call to connect before using query
 var types = require('pg').types
-
 /*
  * Fix date display error.
  * Simply by adding a function to return the raw value, we
@@ -62,6 +61,12 @@ module.exports = {
 
   },
 
-  query: (text, params) => connPool.query(text, params)
+  query: (text, params) => {
+    if (connPool) {
+      return connPool.query(text, params);
+    } else {
+      console.log('VAL_Utilities/db_postgres.js::query | ERROR: No db connection, connPool is NULL | call db_postgres::connect')
+    }
+  }
 
 };
