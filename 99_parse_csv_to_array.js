@@ -1,4 +1,5 @@
 module.exports.csvFileToArrayOfObjects = csvFileTo2DObject; //was this supposed to overload csvFileTo2DArray => csvFileTo2DObject ???
+module.exports.csvFileTo2DObject = csvFileTo2DObject;
 module.exports.csvFileTo2DArray = csvFileTo2DArray;
 module.exports.csvTextTo2DArray = csvTextTo2DArray;
 module.exports.csvLineTo1DArray = csvLineTo1DArray;
@@ -15,9 +16,14 @@ const { once } = require('events');
 const { createReadStream } = require('fs');
 const { createInterface } = require('readline');
 
-//wrapper for 2DArray function call with headRow
-async function csvFileTo2DObject(file, delim=',', headRow=true, filterAscii=false) {
-  return csvFileTo2DArray(file, delim, true, filterAscii);
+/*
+  wrapper for 2DArray function call with headRow
+  includeColumns - optional array of columns to include in the output. if empty, it includes all.
+  excludeRowTest - optional function to compare each field which, if true, will exclude the entire row.
+*/
+async function csvFileTo2DObject(file, delim=',', headRow=true, filterAscii=false, includeColumns=[], excludeRowTest=()=>{return false}) {
+  console.log(`csvFileTo2DObject includeColumns:`, includeColumns, 'excludeRowTest:', excludeRowTest);
+  return csvFileTo2DArray(file, delim, true, filterAscii, includeColumns, excludeRowTest);
 }
 
 /*
@@ -25,7 +31,7 @@ async function csvFileTo2DObject(file, delim=',', headRow=true, filterAscii=fals
 
   Parse an entire file into an array of arrays of values only if headRow is false.
 */
-async function csvFileTo2DArray(file, delim=',', headRow=true, filterAscii=false) {
+async function csvFileTo2DArray(file, delim=',', headRow=true, filterAscii=false, includeColumns=[], excludeRowTest=()=>{return false}) {
   var idx = 0; //line count. 1 less than total rows if headRow.
   var rows = []; //2D array of rows. rows in array form or object form depending upon header.
   var head = []; //1D array of header field names
@@ -47,11 +53,18 @@ async function csvFileTo2DArray(file, delim=',', headRow=true, filterAscii=false
       }
       if (headRow && idx==0 && head.length==0) {
         head = rowA;
+        lins = line + '\n';
       } else if (headRow) { //convert rowArray to rowObject having key:value pairs
         for (var i=0; i<rowA.length; i++) { //iterate over rowArray
-          rowO[head[i]] = rowA[i]; //set rowObject key:value pair
+          if (includeColumns.length) {
+            if (includeColumns.includes(head[i])) {
+              rowO[head[i]] = rowA[i]; //set rowObject key:value pair
+            }
+          } else {
+            rowO[head[i]] = rowA[i]; //set rowObject key:value pair
+          }
         }
-        rows[idx++] = rowO; //set rowsArray object
+        if (!excludeRowTest(rowO)) {rows[idx++] = rowO;} //set rowsArray object
       } else { //no headrow: build and return rowArray only
         rows[idx++] = rowA;
       }
@@ -60,18 +73,19 @@ async function csvFileTo2DArray(file, delim=',', headRow=true, filterAscii=false
     await once(rl, 'close');
 
     console.log(`File ${file} processed and closed.`);
+    if (includeColumns.length) {console.log(`NOTE: header changed to includeColumns`, includeColumns);}
 
     ret = {
-      "rows": rows,
-      "rowCount": idx,
-      "header": head
+        "rowCount": idx,
+        "header": includeColumns.length ? includeColumns : head,
+        "rows": rows
     };
 
     return ret;
 
   } catch (err) {
     console.log('csvFileTo2DArray', err);
-    throw err; //?
+    throw new Error(err); //?
   }
 };
 

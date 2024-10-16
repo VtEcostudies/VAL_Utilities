@@ -35,7 +35,7 @@ module.exports = {
   connect: async (db_params) => {
     console.log(`db_postgres.js::connect()`, db_params);
 
-    connPool = await new Pool(db_params)
+    connPool = await new Pool(db_params);
 
     //NEW: test the connection and return a promise.
     return new Promise((resolve, reject) => {
@@ -48,6 +48,10 @@ module.exports = {
         release();
       })
     })
+  },
+
+  close: async () => {
+    return await connPool.end();
   },
 
   test: () => {

@@ -1,4 +1,7 @@
+const parseCanonicalName = require('./97_utilities').parseCanonicalName;
+
 module.exports.initValObject = initValObject;
+module.exports.gbifToValSpecies = gbifToValSpecies;
 module.exports.gbifToValDirect = gbifToValDirect;
 module.exports.gbifOccSpeciesToValDirect = gbifOccSpeciesToValDirect;
 module.exports.gbifToValIngest = gbifToValIngest;
@@ -23,6 +26,74 @@ function initValObject() {
     return val;
 }
 
+function gbifToValSpecies(gbif) {
+  
+  var val = {};
+  var nub = gbif.nubKey ? gbif.nubKey : gbif.key; //always use the nubKey if there is one
+  
+  if (gbif.nubKey && gbif.key != gbif.nubKey) {misCount++;}
+  val.key = Number(gbif.key);
+  val.nubKey = gbif.nubKey ? Number(gbif.nubKey) : 0;
+  val.taxonId = nub;
+  val.scientificName = gbif.scientificName;
+  val.canonicalName = gbif.canonicalName ? gbif.canonicalName : null;
+  val.scientificNameAuthorship = gbif.authorship ? gbif.authorship : null;
+  val.acceptedNameUsageId = gbif.acceptedKey;
+  val.acceptedNameUsage = gbif.accepted;
+  val.taxonRank = gbif.rank;
+  val.taxonomicStatus = gbif.taxonomicStatus;
+  val.taxonRemarks = gbif.remarks;
+  val.parentNameUsageId = gbif.parentKey ? gbif.parentKey : null;
+  val.parentNameUsage = gbif.parent ? gbif.parent: null;
+  val.vernacularName = gbif.vernacularName ? gbif.vernacularName : null;
+  val.kingdom = gbif.kingdom ? gbif.kingdom : null;
+  val.kingdomId = gbif.kingdomKey ? gbif.kingdomKey : null;
+  val.phylum = gbif.phylum ? gbif.phylum : null;
+  val.phylumId = gbif.phylumKey ? gbif.phylumKey : null;
+  val.class = gbif.class ? gbif.class : null;
+  val.classId = gbif.classKey ? gbif.classKey : null;
+  val.order = gbif.order ? gbif.order : null;
+  val.orderId = gbif.orderKey ? gbif.orderKey : null;
+  val.family = gbif.family ? gbif.family : null;
+  val.familyId = gbif.familyKey ? gbif.familyKey : null;
+  val.genus = gbif.genus ? gbif.genus : null;
+  val.genusId = gbif.genusKey ? gbif.genusKey : null;
+  val.species = gbif.species ? gbif.species : null;
+  val.speciesId = gbif.speciesKey ? gbif.speciesKey : null;
+
+  /*
+    GBIF may not provide 'accepted' or 'acceptedKey' for taxonomicStatus == 'DOUBTFUL', or
+    for random taxa. The 'accepted' values do not appear to be reliable at this API endpoint.
+    VAL DE requires 'acceptedNameUsage' and 'acceptedNameUsageId', so here we hack those in.
+    These anomalies are easy to find in the db. As of 2022-01-27, there were 619 of these:
+    select count(*) from val_species where LOWER("taxonomicStatus") like '%doubt%';
+    Also: GBIF does not provide accepted when key == nubKey, for obvious reasons, bolstering
+    our decision to make these self-referential when they're missing.
+ */
+  if (!gbif.acceptedKey || !gbif.accepted) {
+    val.acceptedNameUsage = gbif.scientificName;
+    val.acceptedNameUsageId = nub; //not certain about using nub, here
+  }
+  if (!gbif.canonicalName) {
+    let res = parseCanonicalName(val);
+    val.canonicalName = res.canonicalName;
+    if (!gbif.authorship) {
+      val.scientificNameAuthorship = res.scientificNameAuthorship;
+    }
+  }
+  if ('SPECIES' == gbif.rank) { //pluck dangling token from end of canonicalName by removing @genus...
+    const canon = val.canonicalName;
+    const genus = gbif.genus;
+    val.specificEpithet = (canon.replace(genus, '')).trim();
+  }
+  if (['SUBSPECIES','VARIETY','FORM'].includes(gbif.rank)) { //species is ALWAYS a 2-token name, so this works by removing @species
+    const canon = val.canonicalName;
+    const species = gbif.species;
+    val.infraspecificEpithet = (canon.replace(species, '')).trim();
+  }
+  return val;
+}
+
 /*
 Convert gbif fields to val_species columns for output file and ingestion into
 val_species database table.
@@ -40,6 +111,7 @@ function gbifToValDirect(gbif) {
     val.specificEpithet=rank=='species'?speciessub[1]:null;
     val.infraspecificEpithet=rank=='subspecies'?speciessub[2]:null;
     val.infraspecificEpithet=rank=='variety'?speciessub[2]:val.infraspecificEpithet; //don't overwrite previous on false...
+    val.infraspecificEpithet=rank=='form'?speciessub[2]:val.infraspecificEpithet; //don't overwrite previous on false...
   }
 
   val.gbifId=gbif.key;
@@ -303,7 +375,7 @@ function parseCanonAuthorFromScientificRank(name, rank) {
     case 'subspecies':
     case 'variety':
     case 'form':
-      switch(tokens[2]) { //sometimes they put 'subsp.' or 'var.' between names
+      switch(tokens[2]) { //sometimes they put 'subsp.' or 'var.' or 'f.' between names
         case 'subsp.':
         case 'var.':
         case 'f.':

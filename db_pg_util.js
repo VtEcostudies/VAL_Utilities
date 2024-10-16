@@ -1,41 +1,88 @@
+/*
+  https://node-postgres.com/
+*/
 const query = require('./db_postgres').query;
+var tableColumns = {}; //empty object of tableName keys equal to array of columns, eg. {val_species:[taxonId,scientificName,...], val_vernacular:[taxonId, veranacularName,...]}
+var tableTypes = {};
 
 module.exports = {
-  getColumns: (tableName, columns, types) => getColumns(tableName, columns, types),
-  whereClause: (params, columns, types) => whereClause(params, columns, types),
-  parseColumns: (body, idx, cValues, staticColumns, staticTypes) => parseColumns(body, idx, cValues, staticColumns, staticTypes)
+  getColumns: (tableName, columns, types, verbose) => getColumns(tableName, columns, types, verbose),
+  setColumns: (tableName, columns, types, verbose) => setColumns(tableName, columns, types, verbose),
+  whereClause: (params, columns, types, tableName) => whereClause(params, columns, types, tableName),
+  parseColumns: (body, idx, cValues, staticColumns, staticTypes, tableName) => parseColumns(body, idx, cValues, staticColumns, staticTypes, tableName),
+  copyTableEmpty: copyTableEmpty,
+  createUpdatedAtTrigger: createUpdatedAtTrigger
 }
 
 /*
     Load just columns from the db and return array of columns.
 
-    CORRECTION: it DOES NOT WORK to return an array.
+    NOTE: it DOES NOT WORK to return an array.
 
     HOWEVER: it does work to pass an array as an argument to
-    this funtion, by reference, and update that array here.
+    this function, by reference, and update that array here.
 
-    OPTIONS: (1) Pass an empty array to be filled here, or
-    (2) Use the object returned from here.
+    OPTIONS:
+    (1) Pass an empty array to be filled here, or
+    (2) Use the object returned from here. <-- Chose this option
 
  */
-async function getColumns(tableName, columns=[], types=[]) {
+async function getColumns(tableName, columns=[], types=[], verbose=0) {
 
-    const text = `select * from ${tableName} limit 0;`;
+    const text = `select * from "${tableName}" limit 0;`;
+
+    let objCols = {}; //{colName:colType, colName, colType, ...}
 
     await query(text)
         .then(res => {
-            //console.log('getColumns in VAL_Utilities/db_pg_util.js | result', res);
+            if (verbose) {console.log('db_pg_util=>getColumns query columns result.fields:', res.fields);}
             res.fields.forEach(fld => {
                 columns.push(String(fld.name));
                 types.push(fld.dataTypeID);
-            });
-            //console.log(`${tableName} columns:`, columns);
-            //console.log(`${tableName} type OIDs:`, types);
-            return {tableName: columns, types: types};
-        })
+                objCols[String(fld.name)] = fld.dataTypeID;
+              });
+            return {'tableName': tableName, 'columns': columns, 'types': types, 'objCols': objCols};
+          })
         .catch(err => {
             throw err;
         });
+}
+/*
+  New function to set local file-scope object of table columns, and
+  to use promises.
+
+  Inputs:
+    tableName: required - the name of table whose columns are retrieved and stored in local file-scope array
+    columns: optional - pre-loaded columns to enable eg. table-join requests for columns not in the core table
+    types: optional - 
+    verbose: optional - list the table columns on call
+*/
+async function setColumns(tableName, columns=[], types=[], verbose=0) {
+
+    console.log('db_pg_util::setColumns | tableName:', tableName, '| arg-input columns:', columns, '| arg-input types', types, verbose)
+
+    const text = `select * from "${tableName}" limit 0;`;
+
+    let objCols = {}; //{colName:colType, colName, colType, ...}
+
+    return new Promise((resolve, reject) => {
+      query(text)
+          .then(res => {
+              res.fields.forEach(fld => {
+                  columns.push(String(fld.name));
+                  types.push(fld.dataTypeID);
+                  objCols[String(fld.name)] = fld.dataTypeID;
+              });
+              if (verbose) {console.log(`db_pg_util::setColumns | ${tableName} output columns =>`, columns, `^ ${tableName} columns.`);}
+              tableColumns[tableName] = columns;
+              tableTypes[tableName] = types;
+              resolve({'tableName': tableName, 'columns': columns, 'types': types, 'objCols': objCols});
+          })
+          .catch(err => {
+            if (verbose) {console.log(`db_pgutil::setColumns | ${tableName} | ERROR:`, err);}
+              reject(err);
+          });
+      });
 }
 
 /*
@@ -76,7 +123,11 @@ async function getColumns(tableName, columns=[], types=[]) {
     puts the N different values for a repeated argument into a sub-array of values for us.
 
  */
-function whereClause(params={}, staticColumns=[], staticTypes=[]) {
+function whereClause(params={}, staticColumns=[], staticTypes=[], tableName=null) {
+
+  console.log('db_pg_util::whereClause', params, tableName);
+  if (0 == staticColumns.length) {staticColumns = tableColumns[tableName] || [];}
+
     var where = '';
     var values = [];
     var idx = 1;
@@ -146,12 +197,15 @@ function whereClause(params={}, staticColumns=[], staticTypes=[]) {
 
     new: handles array of strings type, OID=1015
     incoming csv values like 'one, two, three' converted to {"one","two","three"}
- */
-function parseColumns(body={}, idx=1, cValues=[], staticColumns=[], staticTypes=[]) {
+*/
+function parseColumns(body={}, idx=1, cValues=[], staticColumns=[], staticTypes=[], tableName=null) {
     var cNames = ''; // "username,email,zipcode,..."
     var cNumbr = ''; // "$1,$2,$3,..."
 
-    //console.log(`db_pg_util.parseColumns`, body, idx, cValues, staticColumns, staticTypes);
+    //console.log(`db_pg_util::parseColumns`, body, idx, cValues, staticColumns, staticTypes, tableName);
+
+    if (0 == staticColumns.length && tableName) {staticColumns = tableColumns[tableName] || [];}
+    if (0 == staticTypes.length && tableName) {staticTypes = tableTypes[tableName] || [];}
 
     if (Object.keys(body).length) {
         for (var key in body) {
@@ -180,4 +234,42 @@ function parseColumns(body={}, idx=1, cValues=[], staticColumns=[], staticTypes=
     }
 
     return { 'named': cNames, 'numbered': cNumbr, 'values': cValues };
+}
+
+async function copyTableEmpty(sourceName, targetName) {
+
+  var text = `
+  CREATE TABLE IF NOT EXISTS "${targetName}" AS SELECT * FROM ${sourceName} LIMIT 0;
+
+  DROP TRIGGER IF EXISTS trigger_updated_at on "${targetName}";
+
+  CREATE TRIGGER trigger_updated_at 
+  BEFORE UPDATE
+  ON "${targetName}"
+  FOR EACH ROW
+  EXECUTE PROCEDURE set_updated_at();
+
+  ALTER TABLE "${targetName}" ALTER COLUMN "createdAt" SET DEFAULT now();
+  ALTER TABLE "${targetName}" ALTER COLUMN "updatedAt" SET DEFAULT now(); 
+  `;
+
+  if ('new_species' == sourceName) {
+    text += 
+    `ALTER TABLE "${targetName}" DROP CONSTRAINT IF EXISTS "${targetName}_pkey";`
+    `ALTER TABLE "${targetName}" ADD CONSTRAINT "${targetName}_pkey" PRIMARY KEY ("taxonId");`
+  }
+  console.log(`db_pg_util=>copyTableEmpty(${sourceName}, ${targetName})`, text);
+  return await query(text);
+}
+
+async function createUpdatedAtTrigger(targetName) {
+
+  const text = 
+    `CREATE TRIGGER trigger_updated_at 
+    BEFORE UPDATE
+    ON "${targetName}"
+    FOR EACH ROW
+    EXECUTE PROCEDURE set_updated_at();`
+
+  return await query(text);
 }

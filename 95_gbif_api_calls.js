@@ -1,12 +1,13 @@
-const urls = require('./00_config').urls;
-const Request = require('request');
-const log = require('./93_log_utilities').log;
+//const urls = require('./00_config').urls;
+const get = require('request').get; //import { get } from 'request';
+const log = require('./93_log_utilities'); //import { log } from './93_log_utilities';
 
 module.exports.getGbifDataset = getGbifDataset;
 module.exports.getGbifPublisher = getGbifPublisher;
 module.exports.getGbifInstallations = getGbifInstallations;
 module.exports.getGbifInstallation = getGbifInstallation;
 module.exports.getGbifOccurrence = getGbifOccurrence;
+module.exports.getGbifTaxon = getGbifTaxon;
 
 /*
   Use this to get publishingOrganizationKey from datasetKey. Eg.:
@@ -158,6 +159,34 @@ function getGbifOccurrence(idx, occurrenceKey) {
       } else {
         log(`SUCCESS | getGbifOccurrence | ${idx} | Occurrence ID | ${occurrenceKey} | ${res.statusCode}`);
         resolve(body); //in this case the API always returns an object {}, not an array.
+      }
+    });
+  });
+}
+
+/*
+  Get a GBIF species with a GBIF species key (key, usageKey, ...taxonKey)
+  eg. http://api.gbif.org/v1/species/4334
+*/
+function getGbifTaxon(idx, key) {
+
+  var parms = {
+    url: `http://api.gbif.org/v1/species/${key}`,
+    json: true
+  };
+
+  return new Promise((resolve, reject) => {
+    Request.get(parms, (err, res, body) => {
+      if (err) {
+        log(`getGbifTaxon|err.code: ${err.code}`, logStream);
+        err.key = key;
+        err.idx = idx;
+        reject(err);
+      } else {
+        log(`${idx} | getGbifTaxon(${key}) | ${res.statusCode} | gbifKey:${body.key?key:undefined}`, logStream, true);
+        //body.key = key;
+        body.idx = idx;
+        resolve(body);
       }
     });
   });
